@@ -13,7 +13,7 @@ class PnLCore:
         - A Quantity Column: The quantity of the trade. + for a Buy, - for a Sell
         - A Side Column: The side of the trade. BUY for a buy, SELL for a Sell
         - A Price Column: The price of the trade
-        - A Date Columns: When the trade happens
+        - A Date Column: When the trade happens
 
         See bottom for examples
 
