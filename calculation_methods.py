@@ -112,10 +112,8 @@ class PnLCalculation(PnLCore):
         """New batch has less quantity than stacked one"""
         dm = self.stack_munched(el)
 
-        # df = dm.loc[dm['munched'] == True]
-        # dq = dm.loc[dm['munched'] == False]
-        df = dm[np.where(dm['munched'], True, False)]
-        dq = dm[np.where(dm['munched'], True, False)]
+        df = dm.loc[dm['munched'] == True]
+        dq = dm.loc[dm['munched'] == False]
 
         df_bal = df.copy().tail(1)
 
