@@ -4,10 +4,24 @@ import numpy as np
 
 class PnLCore:
 
-    COLS = {'qty_col': 'alg_qty', 'price_col': 'gbp_price', 'date_col': 'date', 'side_col': 'side',
-            'unwind_price_col': 'unwind_gbp_price', 'pnl_col': 'gbp_pnl'}
+    COLS = {'qty_col': 'qty', 'price_col': 'price', 'date_col': 'date', 'side_col': 'side',
+            'unwind_price_col': 'unwind_price', 'pnl_col': 'pnl'}
 
     def __init__(self, data, **kwargs):
+        """Init of the Core class of P&L Calculation.
+        The data input needs to be a DataFrame, containing core columns:
+        - A Quantity Column: The quantity of the trade. + for a Buy, - for a Sell
+        - A Side Column: The side of the trade. BUY for a buy, SELL for a Sell
+        - A Price Column: The price of the trade
+        - A Date Columns: When the trade happens
+
+        See bottom for examples
+
+        ---
+
+        You can override default column names via kwargs.
+
+        """
 
         # Queues
         self.queue = data.reset_index(drop=True).to_dict(orient='index')
@@ -259,18 +273,21 @@ if __name__ == '__main__':
 
     df = pd.DataFrame()
 
-    df['alg_qty'] = [1, 2, 9, -5, -1, 2]
-    df['side'] = 'BUY'
-    df.loc[df['alg_qty'] < 0, 'side'] = 'SELL'
+    df['qty'] = [1, 2, 9, -5, -1, 2]
+    df['price'] = [10, 12, 15, 12, 11, 12]
 
-    df['gbp_price'] = [10, 12, 15, 12, 11, 12]
+    df['side'] = 'BUY'
+    df.loc[df['qty'] < 0, 'side'] = 'SELL'
 
     df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-01-04', '2020-01-04']
 
     fifo = FIFO(data=df).run()
     lifo = LIFO(data=df).run()
     avgr = AVG(data=df).run()
-    calc = PnLMethods(data=df, method='fifo')
+
+    df = df.rename(columns={'price': 'foo_price'})
+
+    calc = PnLMethods(data=df, method='fifo', price_col='foo_price')
 
     print(fifo.pnls[fifo.pnl_col].sum())
     print(lifo.pnls[lifo.pnl_col].sum())
