@@ -1,4 +1,4 @@
-from pnl_methods.methods import PnLMethods
+from pnl_report.methods import PnLMethods
 
 from functools import reduce
 import pandas as pd
