@@ -234,6 +234,8 @@ class AVG(PnLCalculation):
     def __init__(self, data, **kwargs):
         super().__init__(data, **kwargs)
 
+    # Properties
+
     @property
     def stack_df(self):
         """Overrides to average every new batch into the existing batch"""
@@ -263,6 +265,8 @@ class PnLMethods:
 
     def __init__(self, data, method='fifo', **kwargs):
         self.calc = self.METHODS[method](data=data, **kwargs).run()
+
+    # Properties
 
     @property
     def pnls(self):
