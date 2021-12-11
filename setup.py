@@ -1,9 +1,11 @@
-import re
-VERSIONFILE="pnl_report/_version.py"
-verstrline = open(VERSIONFILE, "rt").read()
-VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-mo = re.search(VSRE, verstrline, re.M)
-if mo:
-    verstr = mo.group(1)
-else:
-    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+from setuptools import setup
+
+setup(
+   name='pnl_report',
+   version='0.5.0',
+   description='Offers FIFO, LIFO, AVG P&L calculations via a report',
+   author='Elie',
+   # author_email='foomail@foo.com',
+   packages=['pnl_report'],
+   install_requires=['numpy', 'pandas', 'functools'],
+)
