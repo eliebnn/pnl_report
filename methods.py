@@ -6,8 +6,6 @@ import numpy as np
 
 class PnLCore:
 
-    COLS = DataFormat.COLS
-
     def __init__(self, data, **kwargs):
         """Init of the Core class of P&L Calculation.
         The data input needs to be a DataFrame, containing core columns:
@@ -24,10 +22,11 @@ class PnLCore:
 
         """
         # Default column names
-        self.cols = {k: v for k, v in {**self.COLS, **kwargs}.items()}
+        self.fmt = DataFormat
+        self.cols = {k: v for k, v in {**self.fmt.COLS, **kwargs}.items()}
 
         # Queues
-        self.queue = DataFormat.fmt(data, self.cols).reset_index(drop=True).to_dict(orient='index')
+        self.queue = self.fmt.fmt(data, self.cols).reset_index(drop=True).to_dict(orient='index')
         self.stack = []
 
         # Data
@@ -277,7 +276,7 @@ class AVG(PnLCalculation):
 class PnLMethods:
     """Wrapper for the various Calculation Methods"""
     METHODS = {'fifo': FIFO, 'lifo': LIFO, 'avg': AVG}
-    COLS = PnLCore.COLS
+    COLS = DataFormat.COLS
 
     def __init__(self, data, method='fifo', **kwargs):
         self.calc = self.METHODS[method](data=data, **kwargs).run()
@@ -293,7 +292,7 @@ if __name__ == '__main__':
     foo['qty'] = [1, 2, 9, -5, -1, 2]
     foo['price'] = [10, 12, 15, 12, 11, 12]
 
-    bar = DataFormat.fmt(foo, PnLCore.COLS)
+    bar = DataFormat.fmt(foo, DataFormat.COLS)
 
     foo['side'] = 'BUY'
     foo.loc[foo['qty'] < 0, 'side'] = 'SELL'

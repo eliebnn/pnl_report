@@ -19,6 +19,9 @@ You can also provide a date column. If None, one will be created containing 0, 1
 
 The repo will automatically add the missing columns, or data precision.
 
+**Note**: There is no filtering nor sorting based on date values. Rows are processed as they come. MAke sure your 
+DataFrame is properly sorted beforehand.
+
 # Example
 
 Examples can be found for:

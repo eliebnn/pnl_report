@@ -1,4 +1,4 @@
-from pnl_report.methods import PnLMethods
+from pnl_report.methods import PnLMethods, DataFormat
 
 from functools import reduce
 import pandas as pd
@@ -14,7 +14,7 @@ class PnLReport:
 
         self.reports = {k: None for k in data[id_col].dropna().unique().tolist()}
         self.inputs = {**{'id_col': id_col, 'method': method}, **kwargs}
-        self.cols = {**PnLMethods.COLS, **kwargs}
+        self.cols = {**DataFormat.COLS, **kwargs}
 
     # Properties
 
