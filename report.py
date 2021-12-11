@@ -25,7 +25,14 @@ class PnLReport:
         ed_dt = max(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
 
-        df = pd.DataFrame(index=pd.date_range(st_dt, ed_dt), columns=ls)
+        idx = range(int(st_dt), int(ed_dt) + 1) if isinstance(st_dt, (int, float)) else pd.date_range(st_dt, ed_dt)
+        df = pd.DataFrame(index=idx, columns=ls)
+
+        # if isinstance(st_dt, (int, float)):
+        #     df = pd.DataFrame(index=range(st_dt, ed_dt + 1), columns=ls)
+        # else:
+        #     df = pd.DataFrame(index=pd.date_range(st_dt, ed_dt), columns=ls)
+
         dfs = [df]
 
         for c in ls:

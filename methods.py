@@ -1,11 +1,12 @@
+from pnl_report.data_format import DataFormat
+
 import pandas as pd
 import numpy as np
 
 
 class PnLCore:
 
-    COLS = {'qty_col': 'qty', 'price_col': 'price', 'date_col': 'date', 'side_col': 'side',
-            'unwind_price_col': 'unwind_price', 'pnl_col': 'pnl'}
+    COLS = DataFormat.COLS
 
     def __init__(self, data, **kwargs):
         """Init of the Core class of P&L Calculation.
@@ -22,19 +23,23 @@ class PnLCore:
         You can override default column names via kwargs.
 
         """
-
-        # Queues
-        self.queue = data.reset_index(drop=True).to_dict(orient='index')
-        self.stack = []
-
         # Default column names
         self.cols = {k: v for k, v in {**self.COLS, **kwargs}.items()}
 
+        # Queues
+        self.queue = DataFormat.fmt(data, self.cols).reset_index(drop=True).to_dict(orient='index')
+        self.stack = []
+
         # Data
         self.raw_data = data
-        self.pnls = pd.DataFrame(columns=['unwind_qty', self.cols['unwind_price_col'], self.cols['price_col']])
+        self.pnls = pd.DataFrame(columns=['unwind_qty', self.cols['unwind_price_col'],
+                                          self.cols['price_col'], self.cols['pnl_col']])
 
     # Properties
+
+    @property
+    def pnl(self):
+        return self.pnls[self.cols['pnl_col']].sum()
 
     @property
     def side(self):
@@ -288,10 +293,12 @@ if __name__ == '__main__':
     foo['qty'] = [1, 2, 9, -5, -1, 2]
     foo['price'] = [10, 12, 15, 12, 11, 12]
 
+    bar = DataFormat.fmt(foo, PnLCore.COLS)
+
     foo['side'] = 'BUY'
     foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
 
-    foo['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-01-04', '2020-01-04']
+    foo['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05']
 
     fifo = FIFO(data=foo).run()
     lifo = LIFO(data=foo).run()
