@@ -20,18 +20,13 @@ class PnLReport:
 
     @property
     def result_pnl(self):
-
+        """Returns a DF, with unwind dates as index, with P&L time series for each ticker"""
         st_dt = min(self.pnls['unwind_date'])
         ed_dt = max(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
 
         idx = range(int(st_dt), int(ed_dt) + 1) if isinstance(st_dt, (int, float)) else pd.date_range(st_dt, ed_dt)
         df = pd.DataFrame(index=idx, columns=ls)
-
-        # if isinstance(st_dt, (int, float)):
-        #     df = pd.DataFrame(index=range(st_dt, ed_dt + 1), columns=ls)
-        # else:
-        #     df = pd.DataFrame(index=pd.date_range(st_dt, ed_dt), columns=ls)
 
         dfs = [df]
 
@@ -57,13 +52,13 @@ class PnLReport:
     # Data Functions
 
     def set_data(self):
-
+        """Sets the trade data for each ticker"""
         for k in self.reports.keys():
             df = self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k]
             self.reports[k] = PnLMethods(data=df, **self.inputs).run()
 
     def set_pnl(self):
-
+        """Set P&L DataFrame attribute by concat P&L of each ticker"""
         self.pnls = pd.DataFrame()
 
         for k in self.reports.keys():
@@ -80,12 +75,55 @@ class PnLReport:
 
         return self
 
+    def clean(self):
+        """Cleaning the dataset keeps open trades, by keeping stacked content."""
+        raw_data_ls = []
+
+        for k in self.reports.keys():
+            df = self.reports[k].stack_df.drop(columns=['qty_cumsum'], errors='ignore')
+            self.reports[k] = PnLMethods(data=df, **self.inputs).run()
+            raw_data_ls.append(df)
+
+        self.raw_data = pd.concat(raw_data_ls, sort=False, ignore_index=True)
+
+        return self
+
+
+class PnLProjection(PnLReport):
+    """To be used to assess the P&L resulting in potential trades"""
+    def __init__(self, data, trades, **kwargs):
+        super().__init__(data=data, **kwargs)
+        self._trades = trades
+        super().run().clean()
+        self.run()
+
+    @property
+    def trades(self):
+        """If no date column is provided, it will take the max existing one from raw_data, plus cumulative days"""
+        return DataFormat.fmt(df=self._trades.copy(), cols=self.cols)
+
+    def run(self):
+        """Computes P&L based on potential trades. It cleans the data set first, aka it keeps only open trades"""
+        ls = set(list(self.reports.keys())).difference(set(self.trades[self.inputs['id_col']].unique().tolist()))
+        _ = [self.reports.pop(k) for k in ls]
+
+        self.raw_data = pd.concat([self.raw_data, self.trades], sort=False, ignore_index=True)
+        super().run()
+        self.print()
+
+        return self
+
+    def print(self):
+        """Prints the P&L results per ticker"""
+        res = self.result_pnl.tail(1).reset_index(drop=True).to_dict(orient='index')[0]
+        _ = [print(f"Projected P&L for {k}: {v}") for k, v in res.items()]
+
 
 if __name__ == '__main__':
 
     df = pd.DataFrame()
 
-    df['qty'] = [10, 20, 9, -5, -1, -2, -10]
+    df['qty'] = [12, 20, 9, -5, -1, -2, -10]
     df['price'] = [10, 12, 14, 25, 12, 12, 22.5]
     df['ticker'] = ['RDSA LN', 'GOOG US', 'RDSA LN', 'GOOG US', 'RDSA LN', 'GOOG US', 'GOOG US']
 
@@ -94,7 +132,17 @@ if __name__ == '__main__':
 
     df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-05-04', '2020-06-10']
 
-    rep = PnLReport(df).run()
+    rep = PnLReport(df).run().clean()
     res = rep.result_pnl
+
+    # P&L Projection
+
+    dq = pd.DataFrame()
+
+    dq['qty'] = [-3, -2, -5]
+    dq['price'] = [10, 12, 14]
+    dq['ticker'] = ['GOOG US', 'RDSA LN', 'RDSA LN']
+
+    proj = PnLProjection(df, trades=dq)
 
     print()

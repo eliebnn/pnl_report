@@ -1,3 +1,6 @@
+import datetime as dt
+
+
 class DataFormat:
 
     COLS = {'qty_col': 'qty', 'price_col': 'price', 'date_col': 'date', 'side_col': 'side',
@@ -20,13 +23,20 @@ class DataFormat:
         return df
 
     @staticmethod
-    def to_date(df, cols=None):
+    def to_date(df, cols=None, date=None, **kwargs):
         cols = cols if cols else DataFormat.COLS
-        df[cols['date_col']] = df[cols['date_col']] if cols['date_col'] in df.columns else list(range(0, df.shape[0]))
+
+        if cols['date_col'] not in df.columns:
+            date = dt.datetime.strptime(date, '%Y-%m-%d') if date else dt.datetime.now()
+            df['_idx'] = list(range(1, df.shape[0] + 1))
+
+            df[cols['date_col']] = df['_idx'].apply(lambda x: date + dt.timedelta(days=x)).dt.strftime('%Y-%m-%d')
+            df = df.drop(columns=['_idx'])
+
         return df
 
     @staticmethod
-    def fmt(df, cols=None):
+    def fmt(df, cols=None, **kwargs):
         cols = cols if cols else DataFormat.COLS
         df = DataFormat.s2q(df, cols) if cols['side_col'] in df.columns else DataFormat.q2s(df, cols)
-        return DataFormat.to_date(df, cols)
+        return DataFormat.to_date(df, cols, **kwargs)

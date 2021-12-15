@@ -116,8 +116,8 @@ class PnLCalculation(PnLCore):
         """New batch has less quantity than stacked one"""
         dm = self.stack_munched(el)
 
-        df = dm.loc[dm['munched'] == True]
-        dq = dm.loc[dm['munched'] == False]
+        df = dm.loc[dm['munched'] == True].drop(columns='munched')
+        dq = dm.loc[dm['munched'] == False].drop(columns='munched')
 
         df_bal = df.copy().tail(1)
 
@@ -279,10 +279,10 @@ class PnLMethods:
     COLS = DataFormat.COLS
 
     def __init__(self, data, method='fifo', **kwargs):
-        self.calc = self.METHODS[method](data=data, **kwargs).run()
+        self.calc = self.METHODS[method](data=data, **kwargs)
 
     def run(self):
-        return self.calc
+        return self.calc.run()
 
 
 if __name__ == '__main__':
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 
     foo = foo.rename(columns={'price': 'foo_price'})
 
-    calc = PnLMethods(data=foo, method='fifo', price_col='foo_price')
+    calc = PnLMethods(data=foo, method='fifo', price_col='foo_price').run()
 
     print(fifo.pnls[fifo.cols['pnl_col']].sum())
     print(lifo.pnls[lifo.cols['pnl_col']].sum())
