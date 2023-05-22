@@ -1,11 +1,9 @@
+"""
+This file is needed to enable editable installs with `pip install -e`. The main configuration exists in pyproject.toml.
+Once pyproject.toml has support for editable installs this file can be removed.
+https://setuptools.pypa.io/en/latest/userguide/quickstart.html#development-mode
+"""
+
 from setuptools import setup
 
-setup(
-   name='pnl_report',
-   version='0.5.0',
-   description='Offers FIFO, LIFO, AVG P&L calculations via a report',
-   author='Elie',
-   # author_email='foomail@foo.com',
-   packages=['pnl_report'],
-   install_requires=['numpy', 'pandas', 'functools'],
-)
+setup()
