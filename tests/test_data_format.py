@@ -1,38 +1,67 @@
-from pnl_report.data_format import DataFormat
+import datetime as dt
 
 import pandas as pd
 
+from pnl_report.data_format import DataFormat
 
-if __name__ == '__main__':
 
+def test_1():
     # Providing Price and Algebraic Quantity
+    df = pd.DataFrame()
 
-    df1 = pd.DataFrame()
+    df['qty'] = [1, 2, 9, -5, -1, 2]
+    df['price'] = [10, 12, 15, 12, 11, 12]
 
-    df1['qty'] = [1, 2, 9, -5, -1, 2]
-    df1['price'] = [10, 12, 15, 12, 11, 12]
+    ls = [(dt.datetime.now() + dt.timedelta(i)).strftime('%Y-%m-%d') for i in range(1, 7)]
 
-    df1 = DataFormat.fmt(df1, DataFormat.COLS)
+    df = DataFormat.fmt(df, DataFormat.COLS)
+    tmp = pd.DataFrame({
+        'qty': [1, 2, 9, -5, -1, 2],
+        'price': [10, 12, 15, 12, 11, 12],
+        'side': ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY'],
+        'date': ls,
+    })
 
+    assert df.equals(tmp)
+
+
+def test_2():
     # Providing Price and Absolute Quantity, and Side
+    df = pd.DataFrame()
 
-    df2 = pd.DataFrame()
+    df['qty'] = [1, 2, 9, 5, 1, 2]
+    df['price'] = [10, 12, 15, 12, 11, 12]
+    df['side'] = ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY']
 
-    df2['qty'] = [1, 2, 9, 5, 1, 2]
-    df2['price'] = [10, 12, 15, 12, 11, 12]
-    df2['side'] = ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY']
+    ls = [(dt.datetime.now() + dt.timedelta(i)).strftime('%Y-%m-%d') for i in range(1, 7)]
 
-    df2 = DataFormat.fmt(df2, DataFormat.COLS)
+    df = DataFormat.fmt(df, DataFormat.COLS)
+    tmp = pd.DataFrame({
+        'qty': [1, 2, 9, -5, -1, 2],
+        'price': [10, 12, 15, 12, 11, 12],
+        'side': ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY'],
+        'date': ls,
+    })
 
-    # Providing Price and Algebraic Quantity, Side and Date
+    assert df.equals(tmp)
 
-    df3 = pd.DataFrame()
 
-    df3['qty'] = [1, 2, 9, -5, -1, 2]
-    df3['price'] = [10, 12, 15, 12, 11, 12]
-    df3['side'] = ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY']
-    df3['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05']
+def test_3():
 
-    df3 = DataFormat.fmt(df3, DataFormat.COLS)
+    df = pd.DataFrame()
 
-    print()
+    df['qty'] = [1, 2, 9, -5, -1, 2]
+    df['price'] = [10, 12, 15, 12, 11, 12]
+    df['side'] = ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY']
+    df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05']
+
+    df = DataFormat.fmt(df, DataFormat.COLS)
+
+    tmp = pd.DataFrame({
+        'qty': [1, 2, 9, -5, -1, 2],
+        'price': [10, 12, 15, 12, 11, 12],
+        'side': ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY'],
+        'date': ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05'],
+    })
+
+    assert df.equals(tmp)

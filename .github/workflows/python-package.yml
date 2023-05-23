@@ -29,7 +29,6 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python -m pip install git+https://eliebnn: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@github.com/eliebnn/eb_config.git
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
