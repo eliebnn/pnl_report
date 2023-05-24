@@ -133,3 +133,30 @@ def test_4():
     tmp['RDSA'] = tmp['RDSA'].astype(float).apply(lambda x: round(x, 2))
 
     assert df.equals(tmp)
+
+
+def test_5():
+
+    df1 = pd.DataFrame()
+
+    df1['qty'] = [1, 7, 9, -5, -1, 2, -2]
+    df1['price'] = [10, 12, 15, 8.5, 25, 12, 35.2]
+    df1['date'] = ['2020-01-01'] * df1.shape[0]
+
+    df1['ticker'] = ['RDSA', 'RDSA', 'GOOG', 'RDSA', 'GOOG', 'GOOG', 'RDSA']
+
+    report = PnLReport(data=df1, method='fifo').run()
+    df = report.result_pnl.tail(1).reset_index(drop=True)
+    tmp = pd.DataFrame({
+        'RDSA': [30.9],
+        'GOOG': [10.0],
+        'pnl_total': [40.9],
+    })
+
+    df['pnl_total'] = df['pnl_total'].astype(float).apply(lambda x: round(x, 2))
+    tmp['pnl_total'] = tmp['pnl_total'].astype(float).apply(lambda x: round(x, 2))
+
+    df['RDSA'] = df['RDSA'].astype(float).apply(lambda x: round(x, 2))
+    tmp['RDSA'] = tmp['RDSA'].astype(float).apply(lambda x: round(x, 2))
+
+    assert df.equals(tmp)
