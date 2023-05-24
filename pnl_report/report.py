@@ -25,25 +25,28 @@ class PnLReport:
         ed_dt = max(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
 
-        idx = range(int(st_dt), int(ed_dt) + 1) if isinstance(st_dt, (int, float)) else pd.date_range(st_dt, ed_dt)
-        df = pd.DataFrame(index=idx, columns=ls)
+        if isinstance(st_dt, (int, float)):
+            idx = range(int(st_dt), int(ed_dt) + 1)
+        else:
+            idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(st_dt, ed_dt)]
 
-        dfs = [df]
+        dfs = [pd.DataFrame(index=idx, columns=ls)]
 
-        for c in ls:
-            sub_df = self.reports[c].pnls
+        for k in ls:
+            sub_df = self.reports[k].pnls.copy().assign(pnl_cumsum=None)
 
             if sub_df.shape[0]:
                 sub_df = sub_df.loc[sub_df['unwind_date'] >= st_dt]
                 sub_df['pnl_cumsum'] = sub_df[self.cols['pnl_col']].cumsum()
+
                 sub_df = sub_df.drop_duplicates(subset=['unwind_date'], keep='last')
                 sub_df = sub_df[['unwind_date', 'pnl_cumsum']].groupby('unwind_date').sum()
-                sub_df = sub_df.rename(columns={'pnl_cumsum': c})
 
-                dfs.append(sub_df)
+            sub_df = sub_df.rename(columns={'pnl_cumsum': k})
+            dfs.append(sub_df)
 
-        df = reduce(lambda l, r: l.drop(columns=[r.columns[0]]).merge(r, left_index=True, right_index=True,
-                                                                      how='left'), dfs).ffill().replace(np.NaN, 0)
+        df = reduce(lambda l, r: l.drop(columns=[r.columns[0]])
+                    .merge(r, left_index=True, right_index=True, how='left'), dfs).ffill().replace(np.NaN, 0)
 
         df['pnl_total'] = df.sum(axis=1)
 
@@ -53,25 +56,39 @@ class PnLReport:
 
     def set_data(self):
         """Sets the trade data for each ticker"""
-        for k in self.reports.keys():
-            df = self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k]
-            self.reports[k] = PnLMethods(data=df, **self.inputs).run()
+        # for k in self.reports.keys():
+        #     df = self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k]
+        #     self.reports[k] = PnLMethods(data=df, **self.inputs).run()
+
+        self.reports = {k: PnLMethods(data=self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k],
+                                      **self.inputs).run()
+                        for k in self.reports.keys()}
 
     def set_pnl(self):
         """Set P&L DataFrame attribute by concat P&L of each ticker"""
-        self.pnls = pd.DataFrame()
+        # self.pnls = pd.DataFrame()
 
-        for k in self.reports.keys():
-            self.pnls = pd.concat([self.pnls, self.reports[k].pnls], sort=False).reset_index(drop=True)
+        # for k in self.reports.keys():
+        #     self.pnls = pd.concat([self.pnls, self.reports[k].pnls], sort=False).reset_index(drop=True)
 
-        self.pnls = self.pnls.sort_values(by='unwind_date') if self.pnls.shape[1] else self.pnls
+        self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
+                              ignore_index=True).sort_values(by='unwind_date')
+
+        # self.pnls = self.pnls.sort_values(by='unwind_date') if self.pnls.shape[1] else self.pnls
 
         return self
 
     def run(self):
 
-        self.set_data()
-        self.set_pnl()
+        self.reports = {k: PnLMethods(data=self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k],
+                                      **self.inputs).run()
+                        for k in self.reports.keys()}
+
+        self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
+                              ignore_index=True).sort_values(by='unwind_date')
+
+        # self.set_data()
+        # self.set_pnl()
 
         return self
 
@@ -91,6 +108,7 @@ class PnLReport:
 
 class PnLProjection(PnLReport):
     """To be used to assess the P&L resulting in potential trades"""
+
     def __init__(self, data, trades, **kwargs):
         super().__init__(data=data, **kwargs)
         self._trades = trades
@@ -120,7 +138,6 @@ class PnLProjection(PnLReport):
 
 
 if __name__ == '__main__':
-
     df = pd.DataFrame()
 
     df['qty'] = [12, 20, 9, -5, -1, -2, -10]
@@ -132,7 +149,7 @@ if __name__ == '__main__':
 
     df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-05-04', '2020-06-10']
 
-    rep = PnLReport(df).run().clean()
+    rep = PnLReport(df).run()  # .clean()
     res = rep.result_pnl
 
     # P&L Projection
