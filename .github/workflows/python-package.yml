@@ -3,13 +3,13 @@
 
 name: Python package
 
-#on: [workflow_dispatch]
+on: [workflow_dispatch]
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+#on:
+#  push:
+#    branches: [ "master" ]
+#  pull_request:
+#    branches: [ "master" ]
 
 jobs:
   build:
