@@ -10,7 +10,7 @@ class DataFormat:
     def s2q(df, cols=None):
         """Side to Quantity Sign"""
         cols = cols if cols else DataFormat.COLS
-        df[cols['qty_col']] = abs(df[cols['qty_col']])
+        df.loc[:, cols['qty_col']] = abs(df[cols['qty_col']])
         df.loc[df[cols['side_col']] == 'SELL', cols['qty_col']] = -df[cols['qty_col']]
         return df
 

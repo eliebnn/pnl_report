@@ -21,6 +21,10 @@ class PnLReport:
     @property
     def result_pnl(self):
         """Returns a DF, with unwind dates as index, with P&L time series for each ticker"""
+
+        if self.pnls.shape[0] == 0:
+            return pd.DataFrame(columns=list(self.reports.keys()) + ['pnl_total'])
+
         st_dt = min(self.pnls['unwind_date'])
         ed_dt = max(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
@@ -87,6 +91,8 @@ class PnLReport:
         self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
                               ignore_index=True).sort_values(by='unwind_date')
 
+        # self.pnls = self.pnls if self.pnls.shape[0] else pd.DataFrame()
+
         # self.set_data()
         # self.set_pnl()
 
@@ -97,7 +103,7 @@ class PnLReport:
         raw_data_ls = []
 
         for k in self.reports.keys():
-            df = self.reports[k].stack_df.drop(columns=['qty_cumsum'], errors='ignore')
+            df = self.reports[k].stack_df.drop(columns=['qty_cumsum'], errors='ignore').copy()
             self.reports[k] = PnLMethods(data=df, **self.inputs).run()
             raw_data_ls.append(df)
 
@@ -113,6 +119,7 @@ class PnLProjection(PnLReport):
         super().__init__(data=data, **kwargs)
         self._trades = trades
         super().run().clean()
+        self.verbose = kwargs.get('verbose', True)
         self.run()
 
     @property
@@ -122,7 +129,15 @@ class PnLProjection(PnLReport):
 
     def run(self):
         """Computes P&L based on potential trades. It cleans the data set first, aka it keeps only open trades"""
-        ls = set(list(self.reports.keys())).difference(set(self.trades[self.inputs['id_col']].unique().tolist()))
+
+        _1 = {k: self.reports[k].stack_df['qty'].sum() for k in self.reports.keys()}
+        _2 = {k: self.trades.loc[self.trades['ticker'] == k]['qty'].sum() for k in set(self.trades['ticker'].tolist())}
+
+        _1 = {k: v / abs(v) for k, v in _1.items() if v != 0}
+        _2 = {k: v / abs(v) for k, v in _2.items() if v != 0}
+
+        ls = [k for k in _1.keys() if _1[k] == _2[k]]
+
         _ = [self.reports.pop(k) for k in ls]
 
         self.raw_data = pd.concat([self.raw_data, self.trades], sort=False, ignore_index=True)
@@ -133,8 +148,10 @@ class PnLProjection(PnLReport):
 
     def print(self):
         """Prints the P&L results per ticker"""
-        res = self.result_pnl.tail(1).reset_index(drop=True).to_dict(orient='index')[0]
-        _ = [print(f"Projected P&L for {k}: {v}") for k, v in res.items()]
+
+        if self.result_pnl.shape[0] and self.verbose:
+            _ = self.result_pnl.tail(1).reset_index(drop=True).to_dict(orient='index')[0]
+            _ = [print(f"Projected P&L for {k}: {v}") for k, v in _.items()]
 
 
 if __name__ == '__main__':
@@ -156,8 +173,9 @@ if __name__ == '__main__':
 
     dq = pd.DataFrame()
 
-    dq['qty'] = [-3, -2, -5]
-    dq['price'] = [10, 12, 14]
+    dq['date'] = ['2020-06-15', '2020-06-15', '2020-06-17']
+    dq['qty'] = [-3, -100, 5]
+    dq['price'] = [10, 13, 10]
     dq['ticker'] = ['GOOG US', 'RDSA LN', 'RDSA LN']
 
     proj = PnLProjection(df, trades=dq)
