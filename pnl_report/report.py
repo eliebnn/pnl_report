@@ -56,31 +56,8 @@ class PnLReport:
 
         return df
 
-    # Data Functions
+    # Run Function
 
-    def set_data(self):
-        """Sets the trade data for each ticker"""
-        # for k in self.reports.keys():
-        #     df = self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k]
-        #     self.reports[k] = PnLMethods(data=df, **self.inputs).run()
-
-        self.reports = {k: PnLMethods(data=self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k],
-                                      **self.inputs).run()
-                        for k in self.reports.keys()}
-
-    def set_pnl(self):
-        """Set P&L DataFrame attribute by concat P&L of each ticker"""
-        # self.pnls = pd.DataFrame()
-
-        # for k in self.reports.keys():
-        #     self.pnls = pd.concat([self.pnls, self.reports[k].pnls], sort=False).reset_index(drop=True)
-
-        self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
-                              ignore_index=True).sort_values(by='unwind_date')
-
-        # self.pnls = self.pnls.sort_values(by='unwind_date') if self.pnls.shape[1] else self.pnls
-
-        return self
 
     def run(self):
 
@@ -90,11 +67,6 @@ class PnLReport:
 
         self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
                               ignore_index=True).sort_values(by='unwind_date')
-
-        # self.pnls = self.pnls if self.pnls.shape[0] else pd.DataFrame()
-
-        # self.set_data()
-        # self.set_pnl()
 
         return self
 
