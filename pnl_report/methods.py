@@ -51,7 +51,6 @@ class PnLCore:
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        # return abs(sum([el[self.cols['qty_col']] for el in self.stack]))
         return abs(sum(el[self.cols['qty_col']] for el in self.stack))
 
     # Stack Functions
@@ -60,13 +59,10 @@ class PnLCore:
         """Returns current stack as DataFrame, with cumulative position and level of stack being consumed
         by new batch"""
 
-        _ = [abs(x['qty']) for x in self.stack]
-        __ = [sum(_[:i + 1]) for i in range(len(_))]
-        idx = len([i for i in __ if i <= abs(el['qty'])]) + 1
+        _ = np.cumsum([abs(x['qty']) for x in self.stack])
+        idx = len([i for i in _ if i <= abs(el['qty'])]) + 1
 
         return self.stack[:idx], self.stack[idx:]
-
-        # return df
 
     def to_stack(self, el):
         self.stack.append(el)
@@ -114,7 +110,7 @@ class PnLCalculation(PnLCore):
         """New batch has less quantity than stacked one"""
         ym, nm = self.stack_munched(el)
 
-        cumsum = sum([abs(x['qty']) for x in ym])
+        cumsum = sum(abs(x['qty']) for x in ym)
         balance = cumsum - abs(el[self.cols['qty_col']])
         unwind_balance = ym[-1][self.cols['qty_col']] - balance
 
@@ -173,7 +169,7 @@ class PnLCalculation(PnLCore):
             l['unwind_date'] = el[self.cols['date_col']]
             l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
 
-        balance = abs(el[self.cols['qty_col']]) - sum([abs(x['qty']) for x in ls])
+        balance = abs(el[self.cols['qty_col']]) - sum(abs(x['qty']) for x in ls)
         el[self.cols['qty_col']] = abs(balance) if el[self.cols['side_col']] == 'BUY' else -abs(balance)
 
         self._stack = [el]
@@ -302,9 +298,11 @@ class AVG(PnLCalculation):
         px = [l[self.cols['price_col']] for l in ls]
         qx = [l[self.cols['qty_col']] for l in ls]
 
+        sqx = sum(qx)
+
         _ = ls[0]
-        _[self.cols['price_col']] = sum([a * b for a, b in zip(px, qx)]) / sum(qx)
-        _[self.cols['qty_col']] = sum(qx)
+        _[self.cols['price_col']] = sum(a * b for a, b in zip(px, qx)) / sqx
+        _[self.cols['qty_col']] = sqx
 
         return [_]
 
