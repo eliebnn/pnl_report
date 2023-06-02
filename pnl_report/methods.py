@@ -51,7 +51,8 @@ class PnLCore:
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        return abs(sum([el[self.cols['qty_col']] for el in self.stack]))
+        # return abs(sum([el[self.cols['qty_col']] for el in self.stack]))
+        return abs(sum(el[self.cols['qty_col']] for el in self.stack))
 
     # Stack Functions
 
@@ -68,21 +69,21 @@ class PnLCore:
         # return df
 
     def to_stack(self, el):
-        pass
+        self.stack.append(el)
 
     # Quantity Checks
 
     def same_side(self, el):
-        return True if el[self.cols['side_col']] == self.side else False
+        return el[self.cols['side_col']] == self.side
 
     def same_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) == self.qty else False
+        return abs(el[self.cols['qty_col']]) == self.qty
 
     def less_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) < self.qty else False
+        return abs(el[self.cols['qty_col']]) < self.qty
 
     def more_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) > self.qty else False
+        return abs(el[self.cols['qty_col']]) > self.qty
 
     # Quantity Functions
 
@@ -187,7 +188,7 @@ class PnLCalculation(PnLCore):
 
         _ = [l.update({'unwind_qty': abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'BUY']
         _ = [l.update({'unwind_qty': -abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'SELL']
-        _ = [l.pop('_idx') for l in self.pnls if '_idx' in l.keys()]
+        _ = [l.pop('_idx', None) for l in self.pnls]
 
     def compute_pnls(self):
         """Computes the P&L"""
@@ -269,7 +270,7 @@ class FIFO(PnLCalculation):
     # Stack Functions
 
     def to_stack(self, el):
-        self.stack.append(el)
+        self._stack.append(el)
 
 
 class LIFO(PnLCalculation):
@@ -280,7 +281,7 @@ class LIFO(PnLCalculation):
     # Stack Functions
 
     def to_stack(self, el):
-        self.stack.insert(0, el)
+        self._stack.insert(0, el)
 
 
 class AVG(PnLCalculation):
