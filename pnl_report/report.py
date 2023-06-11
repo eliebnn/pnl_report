@@ -120,14 +120,6 @@ class PnLProjection(PnLReport):
 
         # ---
 
-        # _1 = {k: self.reports[k].stack_df['qty'].sum() for k in self.reports.keys()}
-        # _2 = {k: self.trades.loc[self.trades['ticker'] == k]['qty'].sum() for k in set(self.trades['ticker'].tolist())}
-        #
-        # _1 = {k: v / abs(v) for k, v in _1.items() if v != 0}
-        # _2 = {k: v / abs(v) for k, v in _2.items() if v != 0}
-        #
-        # ls = [k for k in _1.keys() if _1[k] == _2[k]]
-
         _ = [self.reports.pop(k) for k in ls]
 
         self.raw_data = pd.concat([self.raw_data, self.trades], sort=False, ignore_index=True)
