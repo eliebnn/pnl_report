@@ -5,6 +5,8 @@ The package allows to compute P&L Report using FIFO, LIFO and AVG calculation me
 - LIFO: https://www.investopedia.com/terms/l/lifo.asp
 - AVG: https://www.investopedia.com/terms/a/averagecostmethod.asp
 
+*Note*: The package is being rebuilt on branch `feature_no_pandas`. Its speed efficiency is drastically better.
+
 # Dependencies
 
 Dependencies: pandas, numpy, functools
