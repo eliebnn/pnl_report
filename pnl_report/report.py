@@ -16,6 +16,9 @@ class PnLReport:
         self.inputs = {**{'id_col': id_col, 'method': method}, **kwargs}
         self.cols = {**DataFormat.COLS, **kwargs}
 
+    def _report_pnl(self, k):
+        return pd.DataFrame.from_records(self.reports[k].pnls).assign(**{self.inputs.get('id_col', 'id_col'): k})
+
     # Properties
 
     @property
@@ -37,7 +40,7 @@ class PnLReport:
         dfs = [pd.DataFrame(index=idx, columns=ls)]
 
         for k in ls:
-            sub_df = self.reports[k].pnls.copy().assign(pnl_cumsum=None)
+            sub_df = self._report_pnl(k).assign(pnl_cumsum=None)
 
             if sub_df.shape[0]:
                 sub_df = sub_df.loc[sub_df['unwind_date'] >= st_dt]
@@ -58,15 +61,19 @@ class PnLReport:
 
     # Run Function
 
-
     def run(self):
 
-        self.reports = {k: PnLMethods(data=self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k],
-                                      **self.inputs).run()
+        # Data
+
+        self.raw_data = DataFormat.fmt(self.raw_data, self.cols)
+        self.reports = {k: PnLMethods(data=self.raw_data.loc[self.raw_data[self.inputs['id_col']] == k]
+                                      .drop(columns=[self.inputs['id_col']]), **self.inputs).run()
                         for k in self.reports.keys()}
 
-        self.pnls = pd.concat([pd.DataFrame(columns=['unwind_date'])] + [r.pnls for r in self.reports.values()],
-                              ignore_index=True).sort_values(by='unwind_date')
+        # PnL
+
+        self.pnls = pd.concat([self._report_pnl(k) for k in self.reports.keys()], ignore_index=True)\
+            .sort_values(by=['unwind_date', 'date'])
 
         return self
 
@@ -75,7 +82,8 @@ class PnLReport:
         raw_data_ls = []
 
         for k in self.reports.keys():
-            df = self.reports[k].stack_df.drop(columns=['qty_cumsum'], errors='ignore').copy()
+
+            df = pd.DataFrame.from_records(self.reports[k].stack).assign(**{self.inputs.get('id_col', 'id_col'): k})
             self.reports[k] = PnLMethods(data=df, **self.inputs).run()
             raw_data_ls.append(df)
 
@@ -102,13 +110,23 @@ class PnLProjection(PnLReport):
     def run(self):
         """Computes P&L based on potential trades. It cleans the data set first, aka it keeps only open trades"""
 
-        _1 = {k: self.reports[k].stack_df['qty'].sum() for k in self.reports.keys()}
+        _1 = {k: sum(l['qty'] for l in self.reports[k].stack) for k in self.reports.keys()}
         _2 = {k: self.trades.loc[self.trades['ticker'] == k]['qty'].sum() for k in set(self.trades['ticker'].tolist())}
 
         _1 = {k: v / abs(v) for k, v in _1.items() if v != 0}
         _2 = {k: v / abs(v) for k, v in _2.items() if v != 0}
 
         ls = [k for k in _1.keys() if _1[k] == _2[k]]
+
+        # ---
+
+        # _1 = {k: self.reports[k].stack_df['qty'].sum() for k in self.reports.keys()}
+        # _2 = {k: self.trades.loc[self.trades['ticker'] == k]['qty'].sum() for k in set(self.trades['ticker'].tolist())}
+        #
+        # _1 = {k: v / abs(v) for k, v in _1.items() if v != 0}
+        # _2 = {k: v / abs(v) for k, v in _2.items() if v != 0}
+        #
+        # ls = [k for k in _1.keys() if _1[k] == _2[k]]
 
         _ = [self.reports.pop(k) for k in ls]
 
@@ -136,7 +154,7 @@ if __name__ == '__main__':
     df['side'] = 'BUY'
     df.loc[df['qty'] < 0, 'side'] = 'SELL'
 
-    df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-05-04', '2020-06-10']
+    # df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-05-04', '2020-06-10']
 
     rep = PnLReport(df).run()  # .clean()
     res = rep.result_pnl
@@ -145,7 +163,7 @@ if __name__ == '__main__':
 
     dq = pd.DataFrame()
 
-    dq['date'] = ['2020-06-15', '2020-06-15', '2020-06-17']
+    # dq['date'] = ['2020-06-15', '2020-06-15', '2020-06-17']
     dq['qty'] = [-3, -100, 5]
     dq['price'] = [10, 13, 10]
     dq['ticker'] = ['GOOG US', 'RDSA LN', 'RDSA LN']

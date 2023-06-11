@@ -2,6 +2,7 @@ from pnl_report.data_format import DataFormat
 
 import pandas as pd
 import numpy as np
+import copy
 
 
 class PnLCore:
@@ -114,25 +115,32 @@ class PnLCalculation(PnLCore):
         balance = cumsum - abs(el[self.cols['qty_col']])
         unwind_balance = ym[-1][self.cols['qty_col']] - balance
 
-        unwind_dct = {
+        unwind_dct = copy.deepcopy(ym[-1])
+        unwind_dct.update({
             'unwind_date': el[self.cols['date_col']],
-            self.cols['date_col']: ym[-1][self.cols['date_col']],
-
             self.cols['unwind_price_col']: el[self.cols['price_col']],
-            self.cols['price_col']: ym[-1][self.cols['price_col']],
-
             self.cols['qty_col']: unwind_balance,
-            'unwind_qty': unwind_balance,
+            'unwind_qty': unwind_balance}
+        )
 
-            self.cols['side_col']: ym[-1][self.cols['side_col']],
-            '_idx': ym[-1].get('_idx', 0),
-        }
+        # unwind_dct = {
+        #     'unwind_date': el[self.cols['date_col']],
+        #     self.cols['date_col']: ym[-1][self.cols['date_col']],
+        #
+        #     self.cols['unwind_price_col']: el[self.cols['price_col']],
+        #     self.cols['price_col']: ym[-1][self.cols['price_col']],
+        #
+        #     self.cols['qty_col']: unwind_balance,
+        #     'unwind_qty': unwind_balance,
+        #
+        #     self.cols['side_col']: ym[-1][self.cols['side_col']],
+        #     '_idx': ym[-1].get('_idx', 0),
+        # }
 
         munched_dct = {
             self.cols['qty_col']: abs(balance) if self.side == 'BUY' else -abs(balance),
             self.cols['price_col']: ym[-1][self.cols['price_col']],
             self.cols['side_col']: ym[-1][self.cols['side_col']],
-            '_idx': ym[-1].get('_idx', 0),
             self.cols['date_col']: ym[-1][self.cols['date_col']],
         }
 
@@ -333,16 +341,20 @@ if __name__ == '__main__':
 
     import random
 
-    ls_qty = random.sample(range(-20, 50), 45) * 2 * 100
-    ls_prx = random.sample(range(10, 25), 15) * 6 * 100
+    ls_qty = random.sample(range(-30, 40), 45) * 2 * 25
+    ls_prx = random.sample(range(10, 25), 15) * 6 * 25
+
+    random.shuffle(ls_qty)
+    random.shuffle(ls_prx)
 
     foo = pd.DataFrame({'qty': ls_qty, 'price': ls_prx})
     foo['side'] = 'BUY'
     foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
 
+    foo_dct = foo.to_dict(orient='index')
+    print()
+
     fifo = FIFO(data=foo).run()
-
-
 
     foo['qty'] = [1, 2, 9, -5, -1, 2]
     foo['price'] = [10, 11, 8, 12, 11, 12]

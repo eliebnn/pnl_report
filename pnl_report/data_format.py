@@ -27,11 +27,7 @@ class DataFormat:
         cols = cols if cols else DataFormat.COLS
 
         if cols['date_col'] not in df.columns:
-            date = dt.datetime.strptime(date, '%Y-%m-%d') if date else dt.datetime.now()
-            df['_idx'] = list(range(1, df.shape[0] + 1))
-
-            df[cols['date_col']] = df['_idx'].apply(lambda x: date + dt.timedelta(days=x)).dt.strftime('%Y-%m-%d')
-            df = df.drop(columns=['_idx'])
+            df[cols['date_col']] = list(range(1, df.shape[0] + 1))
 
         return df
 
