@@ -52,7 +52,7 @@ class PnLCore:
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        return abs(sum(el[self.cols['qty_col']] for el in self.stack))
+        return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
 
     # Stack Functions
 
@@ -60,8 +60,8 @@ class PnLCore:
         """Returns current stack as DataFrame, with cumulative position and level of stack being consumed
         by new batch"""
 
-        _ = np.cumsum([abs(x['qty']) for x in self.stack])
-        idx = len([i for i in _ if i <= abs(el['qty'])]) + 1
+        _ = np.cumsum(np.abs(np.array([x['qty'] for x in self.stack])))
+        idx = np.searchsorted(_, abs(el['qty']), side='right') + 1
 
         return self.stack[:idx], self.stack[idx:]
 
@@ -122,20 +122,6 @@ class PnLCalculation(PnLCore):
             self.cols['qty_col']: unwind_balance,
             'unwind_qty': unwind_balance}
         )
-
-        # unwind_dct = {
-        #     'unwind_date': el[self.cols['date_col']],
-        #     self.cols['date_col']: ym[-1][self.cols['date_col']],
-        #
-        #     self.cols['unwind_price_col']: el[self.cols['price_col']],
-        #     self.cols['price_col']: ym[-1][self.cols['price_col']],
-        #
-        #     self.cols['qty_col']: unwind_balance,
-        #     'unwind_qty': unwind_balance,
-        #
-        #     self.cols['side_col']: ym[-1][self.cols['side_col']],
-        #     '_idx': ym[-1].get('_idx', 0),
-        # }
 
         munched_dct = {
             self.cols['qty_col']: abs(balance) if self.side == 'BUY' else -abs(balance),
@@ -229,35 +215,6 @@ class PnLCalculation(PnLCore):
 
     def has_stack(self, el):
         return False if self.stack else True
-
-    def _run(self):
-        """Runs the various steps, going through each batch"""
-        for el in self.queue.values():
-
-            if not self.stack:
-                self.to_stack(el)
-                continue
-
-            if self.same_side(el):
-                self.to_stack(el)
-                continue
-
-            if self.less_qty(el):
-                self.less_qty_func(el)
-                continue
-
-            if self.same_qty(el):
-                self.same_qty_func(el)
-                continue
-
-            if self.more_qty(el):
-                self.more_qty_func(el)
-                continue
-
-        self.sanitize()
-        self.compute_pnls()
-
-        return self
 
 
 # ----------------------

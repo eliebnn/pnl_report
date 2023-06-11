@@ -111,7 +111,8 @@ class PnLProjection(PnLReport):
         """Computes P&L based on potential trades. It cleans the data set first, aka it keeps only open trades"""
 
         _1 = {k: sum(l['qty'] for l in self.reports[k].stack) for k in self.reports.keys()}
-        _2 = {k: self.trades.loc[self.trades['ticker'] == k]['qty'].sum() for k in set(self.trades['ticker'].tolist())}
+        _2 = {k: self.trades.loc[self.trades[self.inputs['id_col']] == k][self.cols['qty_col']].sum() for k
+              in set(self.trades[self.inputs['id_col']].tolist())}
 
         _1 = {k: v / abs(v) for k, v in _1.items() if v != 0}
         _2 = {k: v / abs(v) for k, v in _2.items() if v != 0}
