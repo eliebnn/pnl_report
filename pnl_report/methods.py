@@ -290,26 +290,3 @@ class PnLMethods:
 
     def run(self):
         return self.calc.run()
-
-
-if __name__ == '__main__':
-
-    import pandas as pd
-    import random
-    foo = pd.DataFrame()
-
-    ls_qty = random.sample(range(-30, 40), 45) * 2 * 25
-    ls_prx = random.sample(range(10, 25), 15) * 6 * 25
-
-    random.shuffle(ls_qty)
-    random.shuffle(ls_prx)
-
-    foo = pd.DataFrame({'qty': ls_qty, 'price': ls_prx})
-    foo['side'] = 'BUY'
-    foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
-
-    foo_dct = foo.to_dict(orient='index')
-
-    foo = foo.rename(columns={'qty': 'foobar'})
-
-    fifo = FIFO(data=foo, qty_col='foobar').run()
