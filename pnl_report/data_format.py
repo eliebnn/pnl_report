@@ -1,5 +1,3 @@
-import datetime as dt
-
 
 class DataFormat:
 
@@ -23,7 +21,7 @@ class DataFormat:
         return df
 
     @staticmethod
-    def to_date(df, cols=None, date=None, **kwargs):
+    def to_date(df, cols=None):
         cols = cols if cols else DataFormat.COLS
 
         if cols['date_col'] not in df.columns:
@@ -32,7 +30,7 @@ class DataFormat:
         return df
 
     @staticmethod
-    def fmt(df, cols=None, **kwargs):
+    def fmt(df, cols=None):
         cols = cols if cols else DataFormat.COLS
         df = DataFormat.s2q(df, cols) if cols['side_col'] in df.columns else DataFormat.q2s(df, cols)
-        return DataFormat.to_date(df, cols, **kwargs)
+        return DataFormat.to_date(df, cols)
