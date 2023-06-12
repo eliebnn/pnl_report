@@ -29,13 +29,20 @@ class PnLReport:
             return pd.DataFrame(columns=list(self.reports.keys()) + ['pnl_total'])
 
         st_dt = min(self.pnls['unwind_date'])
-        ed_dt = max(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
 
-        if isinstance(st_dt, (int, float)):
-            idx = range(int(st_dt), int(ed_dt) + 1)
-        else:
+        # if isinstance(st_dt, (int, float)):
+        #     idx = range(int(st_dt), int(ed_dt) + 1)
+        # else:
+        #     idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(st_dt, ed_dt)]
+
+        if self.inputs.get('extend_date', False) and not isinstance(st_dt, (int, float)):
+            ed_dt = max(self.pnls['unwind_date'])
             idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(st_dt, ed_dt)]
+        # elif isinstance(st_dt, (int, float)):
+        #     print()
+        else:
+            idx = self.pnls['unwind_date'].unique().tolist()
 
         dfs = [pd.DataFrame(index=idx, columns=ls)]
 
@@ -110,7 +117,7 @@ class PnLProjection(PnLReport):
     def run(self):
         """Computes P&L based on potential trades. It cleans the data set first, aka it keeps only open trades"""
 
-        _1 = {k: sum(l['qty'] for l in self.reports[k].stack) for k in self.reports.keys()}
+        _1 = {k: sum(l[self.cols['qty_col']] for l in self.reports[k].stack) for k in self.reports.keys()}
         _2 = {k: self.trades.loc[self.trades[self.inputs['id_col']] == k][self.cols['qty_col']].sum() for k
               in set(self.trades[self.inputs['id_col']].tolist())}
 
@@ -147,9 +154,9 @@ if __name__ == '__main__':
     df['side'] = 'BUY'
     df.loc[df['qty'] < 0, 'side'] = 'SELL'
 
-    # df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-05-04', '2020-06-10']
+    df['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-04', '2020-06-10']
 
-    rep = PnLReport(df).run()  # .clean()
+    rep = PnLReport(df, extend_date=False).run()  # .clean()
     res = rep.result_pnl
 
     # P&L Projection

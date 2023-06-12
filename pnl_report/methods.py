@@ -1,6 +1,5 @@
 from pnl_report.data_format import DataFormat
 
-import pandas as pd
 import numpy as np
 import copy
 
@@ -60,8 +59,8 @@ class PnLCore:
         """Returns current stack as DataFrame, with cumulative position and level of stack being consumed
         by new batch"""
 
-        _ = np.cumsum(np.abs(np.array([x['qty'] for x in self.stack])))
-        idx = np.searchsorted(_, abs(el['qty']), side='right') + 1
+        _ = np.cumsum(np.abs(np.array([x[self.cols['qty_col']] for x in self.stack])))
+        idx = np.searchsorted(_, abs(el[self.cols['qty_col']]), side='right') + 1
 
         return self.stack[:idx], self.stack[idx:]
 
@@ -111,7 +110,7 @@ class PnLCalculation(PnLCore):
         """New batch has less quantity than stacked one"""
         ym, nm = self.stack_munched(el)
 
-        cumsum = sum(abs(x['qty']) for x in ym)
+        cumsum = sum(abs(x[self.cols['qty_col']]) for x in ym)
         balance = cumsum - abs(el[self.cols['qty_col']])
         unwind_balance = ym[-1][self.cols['qty_col']] - balance
 
@@ -119,7 +118,6 @@ class PnLCalculation(PnLCore):
         unwind_dct.update({
             'unwind_date': el[self.cols['date_col']],
             self.cols['unwind_price_col']: el[self.cols['price_col']],
-            self.cols['qty_col']: unwind_balance,
             'unwind_qty': unwind_balance}
         )
 
@@ -131,11 +129,12 @@ class PnLCalculation(PnLCore):
         }
 
         _ = {self.cols['unwind_price_col']: el[self.cols['price_col']], 'unwind_date': el[self.cols['date_col']]}
-        ym = ym[:-1] + [unwind_dct]
 
         for k in ym:
             k.update(_)
             k['unwind_qty'] = k[self.cols['qty_col']]
+
+        ym = ym[:-1] + [unwind_dct]
 
         self._stack = [munched_dct] + nm
         self.pnls.extend(ym)
@@ -163,7 +162,7 @@ class PnLCalculation(PnLCore):
             l['unwind_date'] = el[self.cols['date_col']]
             l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
 
-        balance = abs(el[self.cols['qty_col']]) - sum(abs(x['qty']) for x in ls)
+        balance = abs(el[self.cols['qty_col']]) - sum(abs(x[self.cols['qty_col']]) for x in ls)
         el[self.cols['qty_col']] = abs(balance) if el[self.cols['side_col']] == 'BUY' else -abs(balance)
 
         self._stack = [el]
@@ -259,7 +258,7 @@ class AVG(PnLCalculation):
         if not self._stack:
             return {}
 
-        ls = self._stack
+        ls = copy.deepcopy(self._stack)
         px = [l[self.cols['price_col']] for l in ls]
         qx = [l[self.cols['qty_col']] for l in ls]
 
@@ -294,9 +293,10 @@ class PnLMethods:
 
 
 if __name__ == '__main__':
-    foo = pd.DataFrame()
 
+    import pandas as pd
     import random
+    foo = pd.DataFrame()
 
     ls_qty = random.sample(range(-30, 40), 45) * 2 * 25
     ls_prx = random.sample(range(10, 25), 15) * 6 * 25
@@ -309,34 +309,7 @@ if __name__ == '__main__':
     foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
 
     foo_dct = foo.to_dict(orient='index')
-    print()
 
-    fifo = FIFO(data=foo).run()
+    foo = foo.rename(columns={'qty': 'foobar'})
 
-    foo['qty'] = [1, 2, 9, -5, -1, 2]
-    foo['price'] = [10, 11, 8, 12, 11, 12]
-
-    foo['qty'] = [-1, 2, 9, 5, 1, 2]
-    foo['price'] = [10, 11, 8, 12, 11, 12]
-
-    bar = DataFormat.fmt(foo, DataFormat.COLS)
-
-    foo['side'] = 'BUY'
-    foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
-
-    foo['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05']
-
-    fifo = FIFO(data=foo).run()
-    lifo = LIFO(data=foo).run()
-    avgr = AVG(data=foo).run()
-
-    fifo_pnl = fifo.pnls
-
-    calc = PnLMethods(data=foo, method='fifo').run()
-
-    # print(fifo.pnls[fifo.cols['pnl_col']].sum())
-    # print(lifo.pnls[lifo.cols['pnl_col']].sum())
-    # print(avgr.pnls[avgr.cols['pnl_col']].sum())
-    # print(calc.pnls[avgr.cols['pnl_col']].sum())
-
-    print()
+    fifo = FIFO(data=foo, qty_col='foobar').run()

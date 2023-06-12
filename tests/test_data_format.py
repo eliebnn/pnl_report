@@ -12,7 +12,7 @@ def test_1():
     df['qty'] = [1, 2, 9, -5, -1, 2]
     df['price'] = [10, 12, 15, 12, 11, 12]
 
-    ls = [(dt.datetime.now() + dt.timedelta(i)).strftime('%Y-%m-%d') for i in range(1, 7)]
+    ls = list(range(1, 7))
 
     df = DataFormat.fmt(df, DataFormat.COLS)
     tmp = pd.DataFrame({
@@ -33,7 +33,7 @@ def test_2():
     df['price'] = [10, 12, 15, 12, 11, 12]
     df['side'] = ['BUY', 'BUY', 'BUY', 'SELL', 'SELL', 'BUY']
 
-    ls = [(dt.datetime.now() + dt.timedelta(i)).strftime('%Y-%m-%d') for i in range(1, 7)]
+    ls = list(range(1, 7))
 
     df = DataFormat.fmt(df, DataFormat.COLS)
     tmp = pd.DataFrame({
