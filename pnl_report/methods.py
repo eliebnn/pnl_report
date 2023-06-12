@@ -144,10 +144,10 @@ class PnLCalculation(PnLCore):
 
         ls = self.stack
 
-        for l in ls:
-            l['unwind_qty'] = l[self.cols['qty_col']]
-            l['unwind_date'] = el[self.cols['date_col']]
-            l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+        for k in ls:
+            k['unwind_qty'] = k[self.cols['qty_col']]
+            k['unwind_date'] = el[self.cols['date_col']]
+            k[self.cols['unwind_price_col']] = el[self.cols['price_col']]
 
         self._stack = []
         self.pnls.extend(ls)
@@ -157,10 +157,10 @@ class PnLCalculation(PnLCore):
 
         ls = self.stack
 
-        for l in ls:
-            l['unwind_qty'] = l[self.cols['qty_col']]
-            l['unwind_date'] = el[self.cols['date_col']]
-            l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+        for k in ls:
+            k['unwind_qty'] = k[self.cols['qty_col']]
+            k['unwind_date'] = el[self.cols['date_col']]
+            k[self.cols['unwind_price_col']] = el[self.cols['price_col']]
 
         balance = abs(el[self.cols['qty_col']]) - sum(abs(x[self.cols['qty_col']]) for x in ls)
         el[self.cols['qty_col']] = abs(balance) if el[self.cols['side_col']] == 'BUY' else -abs(balance)
@@ -175,9 +175,9 @@ class PnLCalculation(PnLCore):
         if not self.pnls:
             return 0
 
-        _ = [l.update({'unwind_qty': abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'BUY']
-        _ = [l.update({'unwind_qty': -abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'SELL']
-        _ = [l.pop('_idx', None) for l in self.pnls]
+        _ = [k.update({'unwind_qty': abs(k['unwind_qty'])}) for k in self.pnls if k[self.cols['side_col']] == 'BUY']
+        _ = [k.update({'unwind_qty': -abs(k['unwind_qty'])}) for k in self.pnls if k[self.cols['side_col']] == 'SELL']
+        _ = [k.pop('_idx', None) for k in self.pnls]
 
     def compute_pnls(self):
         """Computes the P&L"""
@@ -186,8 +186,8 @@ class PnLCalculation(PnLCore):
             return 0
 
         ls = self.pnls
-        _ = [l.update({self.cols['pnl_col']: l['unwind_qty'] * (l[self.cols['unwind_price_col']] -
-                                                                  l[self.cols['price_col']])}) for l in ls]
+        _ = [k.update({self.cols['pnl_col']: k['unwind_qty'] * (k[self.cols['unwind_price_col']] -
+                                                                k[self.cols['price_col']])}) for k in ls]
 
         return self
 
@@ -259,8 +259,8 @@ class AVG(PnLCalculation):
             return {}
 
         ls = copy.deepcopy(self._stack)
-        px = [l[self.cols['price_col']] for l in ls]
-        qx = [l[self.cols['qty_col']] for l in ls]
+        px = [k[self.cols['price_col']] for k in ls]
+        qx = [k[self.cols['qty_col']] for k in ls]
 
         sqx = sum(qx)
 
