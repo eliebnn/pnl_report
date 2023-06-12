@@ -1,7 +1,7 @@
 from pnl_report.data_format import DataFormat
 
-import pandas as pd
 import numpy as np
+import copy
 
 
 class PnLCore:
@@ -27,12 +27,11 @@ class PnLCore:
 
         # Queues
         self.queue = self.fmt.fmt(data, self.cols).reset_index(drop=True).to_dict(orient='index')
-        self.stack = []
+        self._stack = []
 
         # Data
         self.raw_data = data
-        self.pnls = pd.DataFrame(columns=['unwind_qty', self.cols['unwind_price_col'],
-                                          self.cols['price_col'], self.cols['pnl_col']])
+        self.pnls = []
 
     # Properties
 
@@ -46,46 +45,41 @@ class PnLCore:
         return self.stack[0][self.cols['side_col']] if self.stack else 'Stack Empty'
 
     @property
-    def stack_df(self):
-        """Returns current stack as DataFrame, with cumulative position"""
-
-        if not self.stack:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(self.stack)
-        df['qty_cumsum'] = abs(df[self.cols['qty_col']]).cumsum()
-        return df
+    def stack(self):
+        return self._stack
 
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        return abs(sum([el[self.cols['qty_col']] for el in self.stack]))
+        return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
 
     # Stack Functions
 
     def stack_munched(self, el):
         """Returns current stack as DataFrame, with cumulative position and level of stack being consumed
         by new batch"""
-        df = self.stack_df
-        df['munched'] = (df['qty_cumsum'] <= abs(el[self.cols['qty_col']])).shift(1).replace(np.NaN, True)
-        return df
+
+        _ = np.cumsum(np.abs(np.array([x[self.cols['qty_col']] for x in self.stack])))
+        idx = np.searchsorted(_, abs(el[self.cols['qty_col']]), side='right') + 1
+
+        return self.stack[:idx], self.stack[idx:]
 
     def to_stack(self, el):
-        pass
+        self.stack.append(el)
 
     # Quantity Checks
 
     def same_side(self, el):
-        return True if el[self.cols['side_col']] == self.side else False
+        return el[self.cols['side_col']] == self.side
 
     def same_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) == self.qty else False
+        return abs(el[self.cols['qty_col']]) == self.qty
 
     def less_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) < self.qty else False
+        return abs(el[self.cols['qty_col']]) < self.qty
 
     def more_qty(self, el):
-        return True if abs(el[self.cols['qty_col']]) > self.qty else False
+        return abs(el[self.cols['qty_col']]) > self.qty
 
     # Quantity Functions
 
@@ -114,103 +108,113 @@ class PnLCalculation(PnLCore):
 
     def less_qty_func(self, el):
         """New batch has less quantity than stacked one"""
-        dm = self.stack_munched(el)
+        ym, nm = self.stack_munched(el)
 
-        df = dm.loc[dm['munched'] == True].drop(columns='munched')
-        dq = dm.loc[dm['munched'] == False].drop(columns='munched')
+        cumsum = sum(abs(x[self.cols['qty_col']]) for x in ym)
+        balance = cumsum - abs(el[self.cols['qty_col']])
+        unwind_balance = ym[-1][self.cols['qty_col']] - balance
 
-        df_bal = df.copy().tail(1)
+        unwind_dct = copy.deepcopy(ym[-1])
+        unwind_dct.update({
+            'unwind_date': el[self.cols['date_col']],
+            self.cols['unwind_price_col']: el[self.cols['price_col']],
+            'unwind_qty': unwind_balance}
+        )
 
-        balance = max(df['qty_cumsum']) - abs(el[self.cols['qty_col']])
+        munched_dct = {
+            self.cols['qty_col']: abs(balance) if self.side == 'BUY' else -abs(balance),
+            self.cols['price_col']: ym[-1][self.cols['price_col']],
+            self.cols['side_col']: ym[-1][self.cols['side_col']],
+            self.cols['date_col']: ym[-1][self.cols['date_col']],
+        }
 
-        df['unwind_date'] = el[self.cols['date_col']]
-        df[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+        _ = {self.cols['unwind_price_col']: el[self.cols['price_col']], 'unwind_date': el[self.cols['date_col']]}
 
-        df['unwind_qty'] = \
-            df[self.cols['qty_col']].tolist()[:-1] + [abs(df_bal[self.cols['qty_col']].tolist()[0]) - balance]
-        df_bal[self.cols['qty_col']] = abs(balance) if self.side == 'BUY' else -abs(balance)
+        for k in ym:
+            k.update(_)
+            k['unwind_qty'] = k[self.cols['qty_col']]
 
-        dq = pd.concat([df_bal, dq], sort=False, ignore_index=True)
+        ym = ym[:-1] + [unwind_dct]
 
-        self.pnls = pd.concat([self.pnls, df], sort=False, ignore_index=True)
-        self.stack = list(dq.reset_index(drop=True).to_dict(orient='index').values())
+        self._stack = [munched_dct] + nm
+        self.pnls.extend(ym)
 
     def same_qty_func(self, el):
         """New batch has same quantity than stacked one"""
-        df = self.stack_df
 
-        df[self.cols['qty_col']] = df[self.cols['qty_col']]
-        df['unwind_qty'] = df[self.cols['qty_col']]
-        df['unwind_date'] = el[self.cols['date_col']]
-        df[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+        ls = self.stack
 
-        self.pnls = pd.concat([self.pnls, df], sort=False, ignore_index=True)
-        self.stack = []
+        for l in ls:
+            l['unwind_qty'] = l[self.cols['qty_col']]
+            l['unwind_date'] = el[self.cols['date_col']]
+            l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+
+        self._stack = []
+        self.pnls.extend(ls)
 
     def more_qty_func(self, el):
         """New batch has more quantity than stacked one"""
-        df = self.stack_df
 
-        df[self.cols['qty_col']] = df[self.cols['qty_col']]
-        df['unwind_qty'] = df[self.cols['qty_col']]
-        df['unwind_date'] = el[self.cols['date_col']]
-        df[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+        ls = self.stack
 
-        balance = abs(el[self.cols['qty_col']]) - max(df['qty_cumsum'])
+        for l in ls:
+            l['unwind_qty'] = l[self.cols['qty_col']]
+            l['unwind_date'] = el[self.cols['date_col']]
+            l[self.cols['unwind_price_col']] = el[self.cols['price_col']]
+
+        balance = abs(el[self.cols['qty_col']]) - sum(abs(x[self.cols['qty_col']]) for x in ls)
         el[self.cols['qty_col']] = abs(balance) if el[self.cols['side_col']] == 'BUY' else -abs(balance)
 
-        self.pnls = pd.concat([self.pnls, df], sort=False, ignore_index=True)
-        self.stack = [el]
+        self._stack = [el]
+        self.pnls.extend(ls)
 
     # Results Functions
 
     def sanitize(self):
         """Removes process-related columns, and ensure quantities have proper sign"""
-        if self.pnls.empty:
+        if not self.pnls:
             return 0
 
-        df = self.pnls
-        df = df.drop(columns=['munched', 'qty_cumsum'], errors='ignore')
-
-        df.loc[df[self.cols['side_col']] == 'BUY', 'unwind_qty'] = abs(df['unwind_qty'])
-        df.loc[df[self.cols['side_col']] == 'SELL', 'unwind_qty'] = -abs(df['unwind_qty'])
-
-        self.pnls = df
+        _ = [l.update({'unwind_qty': abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'BUY']
+        _ = [l.update({'unwind_qty': -abs(l['unwind_qty'])}) for l in self.pnls if l[self.cols['side_col']] == 'SELL']
+        _ = [l.pop('_idx', None) for l in self.pnls]
 
     def compute_pnls(self):
         """Computes the P&L"""
-        self.pnls[self.cols['pnl_col']] = \
-            self.pnls['unwind_qty'] * (self.pnls[self.cols['unwind_price_col']] - self.pnls[self.cols['price_col']])
+
+        if not self.pnls:
+            return 0
+
+        ls = self.pnls
+        _ = [l.update({self.cols['pnl_col']: l['unwind_qty'] * (l[self.cols['unwind_price_col']] -
+                                                                  l[self.cols['price_col']])}) for l in ls]
+
         return self
 
     def run(self):
         """Runs the various steps, going through each batch"""
+        conditions_and_functions = [
+            (self.has_stack, self.to_stack),
+            (self.same_side, self.to_stack),
+            (self.less_qty, self.less_qty_func),
+            (self.same_qty, self.same_qty_func),
+            (self.more_qty, self.more_qty_func)
+        ]
+
         for el in self.queue.values():
-
-            if not self.stack:
-                self.to_stack(el)
-                continue
-
-            if self.same_side(el):
-                self.to_stack(el)
-                continue
-
-            if self.less_qty(el):
-                self.less_qty_func(el)
-                continue
-
-            if self.same_qty(el):
-                self.same_qty_func(el)
-                continue
-
-            if self.more_qty(el):
-                self.more_qty_func(el)
-                continue
+            for condition, function in conditions_and_functions:
+                if condition(el):
+                    function(el)
+                    break
 
         self.sanitize()
         self.compute_pnls()
 
         return self
+
+    def has_stack(self, el):
+        return False if self.stack else True
+
 
 # ----------------------
 # Calculations Methods -
@@ -219,13 +223,14 @@ class PnLCalculation(PnLCore):
 
 class FIFO(PnLCalculation):
     """FIRST IN FIRST OUT"""
+
     def __init__(self, data, **kwargs):
         super().__init__(data=data, **kwargs)
 
     # Stack Functions
 
     def to_stack(self, el):
-        self.stack.append(el)
+        self._stack.append(el)
 
 
 class LIFO(PnLCalculation):
@@ -236,7 +241,7 @@ class LIFO(PnLCalculation):
     # Stack Functions
 
     def to_stack(self, el):
-        self.stack.insert(0, el)
+        self._stack.insert(0, el)
 
 
 class AVG(PnLCalculation):
@@ -247,26 +252,28 @@ class AVG(PnLCalculation):
     # Properties
 
     @property
-    def stack_df(self):
+    def stack(self):
         """Overrides to average every new batch into the existing batch"""
 
-        if not self.stack:
-            return pd.DataFrame()
+        if not self._stack:
+            return {}
 
-        df = pd.DataFrame(self.stack)
-        df['wgt_avg_px'] = df[self.cols['qty_col']] * df[self.cols['price_col']]
+        ls = copy.deepcopy(self._stack)
+        px = [l[self.cols['price_col']] for l in ls]
+        qx = [l[self.cols['qty_col']] for l in ls]
 
-        dq = df.copy().head(1)
-        dq[self.cols['qty_col']] = df[self.cols['qty_col']].sum()
-        dq[self.cols['price_col']] = df['wgt_avg_px'].sum() / df[self.cols['qty_col']].sum()
+        sqx = sum(qx)
 
-        dq['qty_cumsum'] = abs(dq[self.cols['qty_col']]).cumsum()
-        return dq.drop(columns=['wgt_avg_px'])
+        _ = ls[0]
+        _[self.cols['price_col']] = sum(a * b for a, b in zip(px, qx)) / sqx
+        _[self.cols['qty_col']] = sqx
+
+        return [_]
 
     # Stack Functions
 
     def to_stack(self, el):
-        self.stack.append(el)
+        self._stack.append(el)
 
 # ----------------------
 # Calculations Wrapper -
@@ -287,29 +294,22 @@ class PnLMethods:
 
 if __name__ == '__main__':
 
+    import pandas as pd
+    import random
     foo = pd.DataFrame()
 
-    foo['qty'] = [1, 2, 9, -5, -1, 2]
-    foo['price'] = [10, 12, 15, 12, 11, 12]
+    ls_qty = random.sample(range(-30, 40), 45) * 2 * 25
+    ls_prx = random.sample(range(10, 25), 15) * 6 * 25
 
-    bar = DataFormat.fmt(foo, DataFormat.COLS)
+    random.shuffle(ls_qty)
+    random.shuffle(ls_prx)
 
+    foo = pd.DataFrame({'qty': ls_qty, 'price': ls_prx})
     foo['side'] = 'BUY'
     foo.loc[foo['qty'] < 0, 'side'] = 'SELL'
 
-    foo['date'] = ['2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-04-04', '2020-04-05']
+    foo_dct = foo.to_dict(orient='index')
 
-    fifo = FIFO(data=foo).run()
-    lifo = LIFO(data=foo).run()
-    avgr = AVG(data=foo).run()
+    foo = foo.rename(columns={'qty': 'foobar'})
 
-    foo = foo.rename(columns={'price': 'foo_price'})
-
-    calc = PnLMethods(data=foo, method='fifo', price_col='foo_price').run()
-
-    print(fifo.pnls[fifo.cols['pnl_col']].sum())
-    print(lifo.pnls[lifo.cols['pnl_col']].sum())
-    print(avgr.pnls[avgr.cols['pnl_col']].sum())
-    print(calc.pnls[avgr.cols['pnl_col']].sum())
-
-    print()
+    fifo = FIFO(data=foo, qty_col='foobar').run()

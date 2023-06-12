@@ -11,7 +11,8 @@ def test_1():
     df['price'] = [10, 12, 15, 12, 11, 12]
 
     fifo = FIFO(data=df).run()
-    assert fifo.pnls['pnl'].tolist() == [2, 0, -6, -4]
+
+    assert [k['pnl'] for k in fifo.pnls] == [2, 0, -6, -4]
 
 
 def test_2():
@@ -22,7 +23,7 @@ def test_2():
     df['price'] = [10, 12, 15, 12, 11, 12]
 
     lifo = LIFO(data=df).run()
-    assert lifo.pnls['pnl'].tolist() == [-15, -4]
+    assert [k['pnl'] for k in lifo.pnls] == [-15, -4]
 
 
 def test_3():
@@ -33,7 +34,10 @@ def test_3():
     df['price'] = [10, 12, 15, 12, 11, 12]
 
     avgr = AVG(data=df).run()
-    assert avgr.pnls['pnl'].apply(lambda x: round(x, 2)).tolist() == [-10.42, -3.08]
+
+    ls = [round(k['pnl'], 2) for k in avgr.pnls]
+
+    assert ls == [-10.42, -3.08]
 
 
 def test_4():
@@ -51,7 +55,7 @@ def test_4():
     fifo = FIFO(data=df).run()
     wfifo = PnLMethods(data=df2, method='fifo').run()
 
-    assert fifo.pnls.equals(wfifo.pnls)
+    assert fifo.pnls == wfifo.pnls
 
 
 def test_5():
@@ -69,7 +73,7 @@ def test_5():
     lifo = LIFO(data=df).run()
     wlifo = PnLMethods(data=df2, method='lifo').run()
 
-    assert lifo.pnls.equals(wlifo.pnls)
+    assert lifo.pnls == wlifo.pnls
 
 
 def test_6():
@@ -85,7 +89,7 @@ def test_6():
     avgr = AVG(data=df).run()
     wavgr = PnLMethods(data=df2, method='avg').run()
 
-    assert avgr.pnls.equals(wavgr.pnls)
+    assert avgr.pnls == wavgr.pnls
 
 
 def test_7():
@@ -104,7 +108,5 @@ def test_7():
 
     fifo2 = FIFO(data=df2, price_col='MY_PX_COL_NAME', qty_col='MY_QTY_COL_NAME').run()
 
-    pnl1 = fifo.pnls.rename(columns={'qty': 'MY_QTY_COL_NAME', 'price': 'MY_PX_COL_NAME'})
-    pnl2 = fifo2.pnls
-
-    assert pnl1.equals(pnl2)
+    assert [k['price'] for k in fifo.pnls] == [k['MY_PX_COL_NAME'] for k in fifo2.pnls]
+    assert [k['qty'] for k in fifo.pnls] == [k['MY_QTY_COL_NAME'] for k in fifo2.pnls]
