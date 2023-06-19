@@ -51,7 +51,8 @@ class PnLCore:
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
+        # return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
+        return np.abs(np.array([el[self.cols['qty_col']] for el in self.stack]).sum())
 
     # Stack Functions
 
