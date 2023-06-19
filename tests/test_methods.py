@@ -3,7 +3,7 @@ from pnl_report.methods import PnLMethods, FIFO, LIFO, AVG
 import pandas as pd
 
 
-def test_1():
+def test_fifo():
 
     df = pd.DataFrame()
 
@@ -15,7 +15,7 @@ def test_1():
     assert [k['pnl'] for k in fifo.pnls] == [2, 0, -6, -4]
 
 
-def test_2():
+def test_lifo():
 
     df = pd.DataFrame()
 
@@ -26,7 +26,7 @@ def test_2():
     assert [k['pnl'] for k in lifo.pnls] == [-15, -4]
 
 
-def test_3():
+def test_avg():
 
     df = pd.DataFrame()
 
@@ -40,7 +40,7 @@ def test_3():
     assert ls == [-10.42, -3.08]
 
 
-def test_4():
+def test_fifo_method_vs_report():
 
     df = pd.DataFrame()
 
@@ -58,7 +58,7 @@ def test_4():
     assert fifo.pnls == wfifo.pnls
 
 
-def test_5():
+def test_lifo_method_vs_report():
 
     df = pd.DataFrame()
 
@@ -76,7 +76,7 @@ def test_5():
     assert lifo.pnls == wlifo.pnls
 
 
-def test_6():
+def test_avg_method_vs_report():
 
     df = pd.DataFrame()
     df['qty'] = [1, 2, 9, -5, -1, 2]
@@ -92,7 +92,7 @@ def test_6():
     assert avgr.pnls == wavgr.pnls
 
 
-def test_7():
+def test_custom_column_names():
 
     df = pd.DataFrame()
 
@@ -110,3 +110,79 @@ def test_7():
 
     assert [k['price'] for k in fifo.pnls] == [k['MY_PX_COL_NAME'] for k in fifo2.pnls]
     assert [k['qty'] for k in fifo.pnls] == [k['MY_QTY_COL_NAME'] for k in fifo2.pnls]
+
+
+def test_has_same():
+
+    df = pd.DataFrame()
+
+    df['qty'] = [5, 5, -10, 5, -5]
+    df['price'] = [10, 10, 12, 10, 12]
+
+    fifo = FIFO(data=df).run()
+
+    assert [k['pnl'] for k in fifo.pnls] == [10, 10, 10]
+
+
+def test_has_less_1():
+    df = pd.DataFrame()
+
+    df['qty'] = [5, 5, -7]
+    df['price'] = [10, 10, 12]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [10, 4],
+        [k['qty'] for k in fifo.stack] == [3]
+    ]
+
+    assert all(test_check)
+
+
+def test_has_less_2():
+    df = pd.DataFrame()
+
+    df['qty'] = [5, 5, -5]
+    df['price'] = [10, 10, 12]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [10],
+        [k['qty'] for k in fifo.stack] == [5]
+    ]
+
+    assert all(test_check)
+
+
+def test_has_less_3():
+    df = pd.DataFrame()
+
+    df['qty'] = [5, 5, -5, -5, 5, -6]
+    df['price'] = [10, 10, 12, 12, 10, 12]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [10, 10, 10],
+        [k['qty'] for k in fifo.stack] == [-1]
+    ]
+
+    assert all(test_check)
+
+
+def test_has_more():
+    df = pd.DataFrame()
+
+    df['qty'] = [5, 5, -11]
+    df['price'] = [10, 10, 12]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [10, 10],
+        [k['qty'] for k in fifo.stack] == [-1]
+    ]
+
+    assert all(test_check)

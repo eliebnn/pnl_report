@@ -5,7 +5,7 @@ import pandas as pd
 from pnl_report.data_format import DataFormat
 
 
-def test_1():
+def test_price_qty():
     # Providing Price and Algebraic Quantity
     df = pd.DataFrame()
 
@@ -25,7 +25,7 @@ def test_1():
     assert df.equals(tmp)
 
 
-def test_2():
+def test_price_qty_side():
     # Providing Price and Absolute Quantity, and Side
     df = pd.DataFrame()
 
@@ -46,7 +46,7 @@ def test_2():
     assert df.equals(tmp)
 
 
-def test_3():
+def test_price_qty_side_date():
 
     df = pd.DataFrame()
 
