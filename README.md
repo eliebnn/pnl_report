@@ -5,9 +5,11 @@ The package allows to compute P&L Report using FIFO, LIFO and AVG calculation me
 - LIFO: https://www.investopedia.com/terms/l/lifo.asp
 - AVG: https://www.investopedia.com/terms/a/averagecostmethod.asp
 
+It is now using NumPy instead of Pandas in the processing bits. Speed increase is substantial.
+
 # Dependencies
 
-Dependencies: pandas, numpy, functools
+Dependencies: pandas, numpy
 
 # Data Required
 
@@ -18,9 +20,6 @@ Required data is a DataFrame. Several set of columns are possibles:
 You can also provide a date column. If None, one will be created containing 0, 1, 2, ..., N.
 
 The repo will automatically add the missing columns, or data precision.
-
-**Note**: There is no filtering nor sorting based on date values. Rows are processed as they come. MAke sure your 
-DataFrame is properly sorted beforehand.
 
 # Example
 
