@@ -51,7 +51,8 @@ class PnLCore:
     @property
     def qty(self):
         """Return current stack cumulated position"""
-        return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
+        # return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
+        return np.abs(np.array([el[self.cols['qty_col']] for el in self.stack]).sum())
 
     # Stack Functions
 
@@ -61,6 +62,9 @@ class PnLCore:
 
         _ = np.cumsum(np.abs(np.array([x[self.cols['qty_col']] for x in self.stack])))
         idx = np.searchsorted(_, abs(el[self.cols['qty_col']]), side='right') + 1
+
+        idx = idx if abs(el[self.cols['qty_col']]) > _[(idx-2):(idx-1)] else idx - 1
+        idx = max(idx, 1)
 
         return self.stack[:idx], self.stack[idx:]
 
@@ -109,16 +113,13 @@ class PnLCalculation(PnLCore):
     def less_qty_func(self, el):
         """New batch has less quantity than stacked one"""
         ym, nm = self.stack_munched(el)
-
-        cumsum = sum(abs(x[self.cols['qty_col']]) for x in ym)
-        balance = cumsum - abs(el[self.cols['qty_col']])
-        unwind_balance = ym[-1][self.cols['qty_col']] - balance
+        balance = sum(abs(x[self.cols['qty_col']]) for x in ym) - abs(el[self.cols['qty_col']])
 
         unwind_dct = copy.deepcopy(ym[-1])
         unwind_dct.update({
             'unwind_date': el[self.cols['date_col']],
             self.cols['unwind_price_col']: el[self.cols['price_col']],
-            'unwind_qty': unwind_balance}
+            'unwind_qty': ym[-1][self.cols['qty_col']] - balance}
         )
 
         munched_dct = {
@@ -126,7 +127,7 @@ class PnLCalculation(PnLCore):
             self.cols['price_col']: ym[-1][self.cols['price_col']],
             self.cols['side_col']: ym[-1][self.cols['side_col']],
             self.cols['date_col']: ym[-1][self.cols['date_col']],
-        }
+        } if balance else {}
 
         _ = {self.cols['unwind_price_col']: el[self.cols['price_col']], 'unwind_date': el[self.cols['date_col']]}
 
@@ -134,10 +135,8 @@ class PnLCalculation(PnLCore):
             k.update(_)
             k['unwind_qty'] = k[self.cols['qty_col']]
 
-        ym = ym[:-1] + [unwind_dct]
-
-        self._stack = [munched_dct] + nm
-        self.pnls.extend(ym)
+        self._stack = [munched_dct] + nm if munched_dct else nm
+        self.pnls.extend(ym[:-1] + [unwind_dct])
 
     def same_qty_func(self, el):
         """New batch has same quantity than stacked one"""
@@ -171,7 +170,10 @@ class PnLCalculation(PnLCore):
     # Results Functions
 
     def sanitize(self):
-        """Removes process-related columns, and ensure quantities have proper sign"""
+        """
+        Removes process-related columns, and ensure quantities have proper sign
+        Current design is faster than one for loop, has less overhead.
+        """
         if not self.pnls:
             return 0
 
