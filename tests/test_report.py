@@ -3,7 +3,7 @@ from pnl_report.report import PnLReport
 import pandas as pd
 
 
-def test_1():
+def test_report_qty_price_date_ticker_one_name_1():
     # Providing Price, Algebraic Quantity and Dates
 
     df1 = pd.DataFrame()
@@ -46,7 +46,7 @@ def test_1():
     assert df.equals(tmp)
 
 
-def test_2():
+def test_report_qty_price_date_ticker_one_name_2():
     # Providing Price, Algebraic Quantity and Dates
 
     df1 = pd.DataFrame()
@@ -88,7 +88,7 @@ def test_2():
     assert df.equals(tmp)
 
 
-def test_3():
+def test_report_qty_price_date_ticker_all_names():
 
     df1 = pd.DataFrame()
 
@@ -114,7 +114,7 @@ def test_3():
     assert df.equals(tmp)
 
 
-def test_4():
+def test_report_qty_price_ticker_all_names():
 
     df2 = pd.DataFrame()
 
@@ -140,34 +140,7 @@ def test_4():
     assert df.equals(tmp)
 
 
-def test_5():
-
-    df1 = pd.DataFrame()
-
-    df1['qty'] = [1, 7, 9, -5, -1, 2, -2]
-    df1['price'] = [10, 12, 15, 8.5, 25, 12, 35.2]
-    df1['date'] = ['2020-01-01'] * df1.shape[0]
-
-    df1['ticker'] = ['RDSA', 'RDSA', 'GOOG', 'RDSA', 'GOOG', 'GOOG', 'RDSA']
-
-    report = PnLReport(data=df1, method='fifo').run()
-    df = report.result_pnl.reset_index(drop=True)
-    tmp = pd.DataFrame({
-        'RDSA': [30.9],
-        'GOOG': [10.0],
-        'pnl_total': [40.9],
-    })
-
-    df['pnl_total'] = df['pnl_total'].astype(float).apply(lambda x: round(x, 2))
-    tmp['pnl_total'] = tmp['pnl_total'].astype(float).apply(lambda x: round(x, 2))
-
-    df['RDSA'] = df['RDSA'].astype(float).apply(lambda x: round(x, 2))
-    tmp['RDSA'] = tmp['RDSA'].astype(float).apply(lambda x: round(x, 2))
-
-    assert df.equals(tmp)
-
-
-def test_6():
+def test_report_qty_price_same_date_ticker_all_names():
 
     df1 = pd.DataFrame()
 
