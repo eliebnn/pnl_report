@@ -186,3 +186,83 @@ def test_has_more():
     ]
 
     assert all(test_check)
+
+
+def test_short_unwind_1():
+    df = pd.DataFrame()
+
+    df['qty'] = [-2, 1]
+    df['price'] = [100, 105]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [-5],
+        [k['qty'] for k in fifo.stack] == [-1]
+    ]
+
+    assert all(test_check)
+
+
+def test_short_unwind_2():
+    df = pd.DataFrame()
+
+    df['qty'] = [-2, 1, 1]
+    df['price'] = [100, 105, 105]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [-5, -5],
+        [k['qty'] for k in fifo.stack] == []
+    ]
+
+    assert all(test_check)
+
+
+def test_short_unwind_3():
+    df = pd.DataFrame()
+
+    df['qty'] = [-2, 2]
+    df['price'] = [100, 105]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [-10],
+        [k['qty'] for k in fifo.stack] == []
+    ]
+
+    assert all(test_check)
+
+
+def test_short_unwind_4():
+    df = pd.DataFrame()
+
+    df['qty'] = [-2, -2, 5]
+    df['price'] = [100, 100, 110]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [-20, -20],
+        [k['qty'] for k in fifo.stack] == [1]
+    ]
+
+    assert all(test_check)
+
+
+def test_short_unwind_5():
+    df = pd.DataFrame()
+
+    df['qty'] = [-2, -2, 5, -1]
+    df['price'] = [100, 100, 110, 120]
+
+    fifo = FIFO(data=df).run()
+
+    test_check = [
+        [k['pnl'] for k in fifo.pnls] == [-20, -20, 10],
+        [k['qty'] for k in fifo.stack] == []
+    ]
+
+    assert all(test_check)

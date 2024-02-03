@@ -58,7 +58,12 @@ class PnLCore:
 
     def stack_munched(self, el):
         """Returns current stack as DataFrame, with cumulative position and level of stack being consumed
-        by new batch"""
+        by new batch
+
+        First element returned is batches being munched by new processed trade.
+        Second element returned is batched not being munched by new processed trade.
+
+        """
 
         _ = np.cumsum(np.abs(np.array([x[self.cols['qty_col']] for x in self.stack])))
         idx = np.searchsorted(_, abs(el[self.cols['qty_col']]), side='right') + 1
@@ -115,13 +120,16 @@ class PnLCalculation(PnLCore):
         ym, nm = self.stack_munched(el)
         balance = sum(abs(x[self.cols['qty_col']]) for x in ym) - abs(el[self.cols['qty_col']])
 
+        # unwind_dct is a copy of the last element of the batch
+        # it has to be processed separately should its quantity not to be unwound entirely
         unwind_dct = copy.deepcopy(ym[-1])
         unwind_dct.update({
             'unwind_date': el[self.cols['date_col']],
             self.cols['unwind_price_col']: el[self.cols['price_col']],
-            'unwind_qty': ym[-1][self.cols['qty_col']] - balance}
+            'unwind_qty': ym[-1][self.cols['qty_col']] + (balance if self.side == 'SELL' else -balance)}
         )
 
+        #
         munched_dct = {
             self.cols['qty_col']: abs(balance) if self.side == 'BUY' else -abs(balance),
             self.cols['price_col']: ym[-1][self.cols['price_col']],
