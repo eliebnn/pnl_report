@@ -19,8 +19,6 @@ dependencies = [
 "pandas>=0.25.0"
 ]
 
-dynamic = ["version"]
-
 [tool.setuptools]
 
 [tool.setuptools_scm]
