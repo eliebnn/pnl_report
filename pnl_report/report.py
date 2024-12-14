@@ -17,7 +17,8 @@ class PnLReport:
         self.cols = {**DataFormat.COLS, **kwargs}
 
     def _report_pnl(self, k):
-        return pd.DataFrame.from_records(self.reports[k].pnls).assign(**{self.inputs.get('id_col', 'id_col'): k})
+        df = pd.DataFrame.from_records(self.reports[k].pnls).assign(**{self.inputs.get('id_col', 'id_col'): k})
+        return df
 
     # Properties
 
@@ -31,16 +32,10 @@ class PnLReport:
         st_dt = min(self.pnls['unwind_date'])
         ls = list(self.reports.keys())
 
-        # if isinstance(st_dt, (int, float)):
-        #     idx = range(int(st_dt), int(ed_dt) + 1)
-        # else:
-        #     idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(st_dt, ed_dt)]
-
         if self.inputs.get('extend_date', False) and not isinstance(st_dt, (int, float)):
             ed_dt = max(self.pnls['unwind_date'])
             idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(st_dt, ed_dt)]
-        # elif isinstance(st_dt, (int, float)):
-        #     print()
+
         else:
             idx = self.pnls['unwind_date'].unique().tolist()
 
@@ -55,11 +50,13 @@ class PnLReport:
 
                 sub_df = sub_df.drop_duplicates(subset=['unwind_date'], keep='last')
                 sub_df = sub_df[['unwind_date', 'pnl_cumsum']].groupby('unwind_date').sum()
+            else:
+                sub_df = pd.DataFrame(columns=['unwind_date', 'pnl_cumsum']).set_index('unwind_date')
 
             sub_df = sub_df.rename(columns={'pnl_cumsum': k})
             dfs.append(sub_df)
 
-        df = reduce(lambda l, r: l.drop(columns=[r.columns[0]])
+        df = reduce(lambda l, r: l.drop(columns=[r.columns[0]], errors='ignore')
                     .merge(r, left_index=True, right_index=True, how='left'), dfs).ffill().replace(np.NaN, 0)
 
         df['pnl_total'] = df.sum(axis=1)
@@ -67,6 +64,56 @@ class PnLReport:
         return df
 
     # Run Function
+
+    def get_pnl_schedule(self, st_dt: str = None, ed_dt: str = None, ffill: bool = False) -> pd.DataFrame:
+        if self.pnls.shape[0] == 0:
+            return pd.DataFrame(columns=list(self.reports.keys()) + ['pnl_total'])
+
+        _st_dt = min(self.pnls['unwind_date'])
+        ls = list(self.reports.keys())
+
+        if self.inputs.get('extend_date', False) and not isinstance(_st_dt, (int, float)):
+            ed_dt = max(self.pnls['unwind_date'])
+            idx = [d.strftime('%Y-%m-%d') for d in pd.date_range(_st_dt, ed_dt)]
+
+        else:
+            idx = self.pnls['unwind_date'].unique().tolist()
+
+        dfs = [pd.DataFrame(index=idx, columns=ls)]
+
+        for k in ls:
+            sub_df = self._report_pnl(k).assign(pnl_cumsum=None)
+
+            if sub_df.shape[0]:
+                sub_df = sub_df.loc[sub_df['unwind_date'] >= _st_dt]
+                sub_df = sub_df[['unwind_date', self.cols['pnl_col']]].groupby('unwind_date').sum()
+
+            #     ---
+
+                # sub_df = sub_df.loc[sub_df['unwind_date'] >= st_dt]
+                # sub_df['pnl_cumsum'] = sub_df[self.cols['pnl_col']].cumsum()
+                #
+                # sub_df = sub_df.drop_duplicates(subset=['unwind_date'], keep='last')
+                # sub_df = sub_df[['unwind_date', 'pnl_cumsum']].groupby('unwind_date').sum()
+
+
+            else:
+                sub_df = pd.DataFrame(columns=['unwind_date', self.cols['pnl_col']]).set_index('unwind_date')
+
+            sub_df = sub_df.rename(columns={self.cols['pnl_col']: k})
+            dfs.append(sub_df)
+
+        df = reduce(lambda l, r: l.drop(columns=[r.columns[0]], errors='ignore')
+                    .merge(r, left_index=True, right_index=True, how='left'), dfs)
+
+        if ffill:
+            df = df.ffill().replace(np.NaN, 0)
+            df['pnl_total'] = df.sum(axis=1)
+
+        df = df.loc[df.index >= st_dt] if st_dt else df
+        df = df.loc[df.index <= ed_dt] if ed_dt else df
+
+        return df
 
     def run(self):
 

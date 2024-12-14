@@ -37,7 +37,8 @@ class PnLCore:
 
     @property
     def pnl(self):
-        return self.pnls[self.cols['pnl_col']].sum()
+        # return self.pnls[self.cols['pnl_col']].sum()
+        return round(sum((v['pnl'] for v in self.pnls)), 2)
 
     @property
     def side(self):
@@ -53,6 +54,13 @@ class PnLCore:
         """Return current stack cumulated position"""
         # return np.abs(sum(el[self.cols['qty_col']] for el in self.stack))
         return np.abs(np.array([el[self.cols['qty_col']] for el in self.stack]).sum())
+
+    @property
+    def avg_px(self):
+        return np.abs(
+            np.array([el[self.cols['qty_col']] * el[self.cols['price_col']] for el in self.stack]).sum()
+            / self.qty
+        )
 
     # Stack Functions
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pnl_report"
-version = '0.1.1'
+version = '0.1.2'
 description = "FIFO, LIFO, AVG P&L calculation"
 readme = "README.md"
 keywords = ["pnl", "report"]
